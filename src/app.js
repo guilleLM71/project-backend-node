@@ -1,17 +1,44 @@
-require('dotenv').config();
-
-const path = require('path');
-const express = require('express');
-const createServer = require('./infrastructure/webserver/server');
-const config = require('./config');
-
-const app = createServer();
-
-// Archivos estáticos desde la carpeta uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.listen(config.port, () => {
-  console.log(`✅ Servidor corriendo en http://localhost:${config.port}`);
-  console.log(`🩺 Health check: http://localhost:${config.port}/api/health`);
-  console.log(`📁 Archivos estáticos: http://localhost:${config.port}/uploads`);
+import dns from "node:dns";
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';    
+import 'express-async-errors';
+import morgan from 'morgan';
+import { loggerMiddleware } from './presentation/middlewares/logger.middleware.js';
+import noteRoutes from './presentation/routes/note.routes.js';
+import { connectMongo } from './infrastructure/database/mongo/connection.js';
+import { connectMysql } from './infrastructure/database/mysql/connection.js';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first');
+await connectMongo();
+//await connectMysql();
+ 
+const app = express();
+ 
+app.use(cors());
+app.use(express.json());
+app.use(loggerMiddleware);
+app.use(morgan('dev'));
+ 
+//imagenes estaticas
+app.use('/uploads', express.static('uploads'));
+app.use('/api/v1/notes',noteRoutes);
+ 
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'OK',message: 'API de notas activa' });
+});
+ 
+ 
+ 
+ 
+//midleware de manejo de errores global
+ 
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Error interno del servidor' });
+});
+ 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
