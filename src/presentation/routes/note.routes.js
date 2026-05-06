@@ -199,6 +199,64 @@ router.get("/category/:categoryId", authMiddleware, noteController.getNotesByCat
 
 /**
  * @swagger
+ * /api/v1/notes/{id}/public:
+ *   get:
+ *     summary: Ver una nota pública (sin autenticación)
+ *     description: Permite acceder a una nota sin necesidad de token JWT. Ideal para compartir links. Si la nota tiene isPrivate en true, se deniega el acceso con un error 403.
+ *     tags: [Notes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID de la nota a visualizar públicamente
+ *     responses:
+ *       200:
+ *         description: Nota obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Note'
+ *       403:
+ *         description: Acceso denegado, la nota es privada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: This note is private
+ *       404:
+ *         description: Nota no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Note not found
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/:id/public", noteController.getPublicNote);
+
+/**
+ * @swagger
  * /api/v1/notes/{id}:
  *   get:
  *     summary: Obtener una nota por su ID
