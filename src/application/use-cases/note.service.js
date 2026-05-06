@@ -32,6 +32,13 @@ export default class NoteService {
         return note;
     }
 
+    async getPublicNoteById(id) {
+        const note = await this.noteRepository.findById(id);
+        if (!note) throw new Error("Note not found");
+        if (note.isPrivate) throw new Error("This note is private");
+        return note;
+    }
+
     async updateNote(id, data, userId) {
         const existingNote = await this.noteRepository.findById(id);
         if (!existingNote) throw new Error("Note not found");
