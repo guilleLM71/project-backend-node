@@ -25,6 +25,16 @@ export default class NoteController {
         }
     }
 
+    getNotesByCategoryId = async (req, res) => {
+        const { categoryId } = req.params;
+        try {
+            const notes = await this.noteService.getNotesByCategoryId(categoryId);
+            res.status(200).json({ success: true, data: notes });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
     getAllNotes = async (req, res) => {
         try {
             const notes = await this.noteService.getAllNotes();

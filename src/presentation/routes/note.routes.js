@@ -21,7 +21,7 @@ const router = Router();
  * @swagger
  * tags:
  *   name: Notes
- *   description: Gestión de notas
+ *   description: Gestión de notas con soporte de categorías
  */
 
 /**
@@ -29,7 +29,7 @@ const router = Router();
  * /api/v1/notes:
  *   post:
  *     summary: Crear una nueva nota
- *     description: Crea una nota nueva para el usuario autenticado. Permite subir una imagen opcional.
+ *     description: Crea una nota nueva para el usuario autenticado. Permite subir una imagen opcional y asociar una categoría.
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -46,20 +46,39 @@ const router = Router();
  *               title:
  *                 type: string
  *                 description: Título de la nota
+ *                 example: Mi primera nota
  *               content:
  *                 type: string
  *                 description: Contenido de la nota
+ *                 example: Este es el contenido de mi nota
  *               imageUrl:
  *                 type: string
  *                 format: binary
  *                 description: Archivo de imagen (opcional)
+ *               isPrivate:
+ *                 type: boolean
+ *                 description: Indica si la nota es privada (opcional)
+ *                 default: false
+ *               password:
+ *                 type: string
+ *                 description: Contraseña para notas privadas (opcional)
+ *               categoryId:
+ *                 type: string
+ *                 description: ID de la categoría a la que pertenece la nota (opcional)
+ *                 example: 6638a1b2c3d4e5f6a7b8c9d0
  *     responses:
  *       201:
  *         description: Nota creada exitosamente
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Note'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Note'
  *       400:
  *         description: Error en la solicitud, datos inválidos
  *         content:
@@ -78,7 +97,7 @@ router.post("/", authMiddleware, upload.single('imageUrl'), noteController.creat
  * /api/v1/notes:
  *   get:
  *     summary: Obtener todas las notas del usuario actual
- *     description: Retorna un listado de notas asociadas al usuario autenticado.
+ *     description: Retorna un listado de notas asociadas al usuario autenticado, incluyendo los datos de la categoría asociada (si existe).
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -88,9 +107,15 @@ router.post("/", authMiddleware, upload.single('imageUrl'), noteController.creat
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Note'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Note'
  *       401:
  *         description: No autorizado
  *       404:
@@ -105,7 +130,7 @@ router.get("/", authMiddleware, noteController.getNotesByUserId);
  * /api/v1/notes/all:
  *   get:
  *     summary: Obtener todas las notas del sistema (Solo Admin)
- *     description: Devuelve todas las notas registradas en el sistema. Requiere privilegios de administrador.
+ *     description: Devuelve todas las notas registradas en el sistema con sus categorías populadas. Requiere privilegios de administrador.
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -115,9 +140,15 @@ router.get("/", authMiddleware, noteController.getNotesByUserId);
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Note'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Note'
  *       401:
  *         description: No autorizado
  *       403:
@@ -129,10 +160,49 @@ router.get("/all", authMiddleware, roleMiddleware(["admin"]), noteController.get
 
 /**
  * @swagger
+ * /api/v1/notes/category/{categoryId}:
+ *   get:
+ *     summary: Obtener notas por categoría
+ *     description: Retorna todas las notas que pertenecen a una categoría específica.
+ *     tags: [Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID de la categoría para filtrar notas
+ *         example: 6638a1b2c3d4e5f6a7b8c9d0
+ *     responses:
+ *       200:
+ *         description: Notas de la categoría obtenidas exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Note'
+ *       401:
+ *         description: No autorizado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/category/:categoryId", authMiddleware, noteController.getNotesByCategoryId);
+
+/**
+ * @swagger
  * /api/v1/notes/{id}:
  *   get:
  *     summary: Obtener una nota por su ID
- *     description: Obtiene los detalles de una nota específica dado su ID.
+ *     description: Obtiene los detalles de una nota específica dado su ID, incluyendo la categoría asociada.
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -149,7 +219,13 @@ router.get("/all", authMiddleware, roleMiddleware(["admin"]), noteController.get
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Note'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Note'
  *       401:
  *         description: No autorizado
  *       403:
@@ -166,7 +242,7 @@ router.get("/:id", authMiddleware, noteController.getNoteById);
  * /api/v1/notes/{id}:
  *   put:
  *     summary: Actualizar una nota existente (Solo Admin)
- *     description: Permite modificar una nota existente. Requiere ser el creador de la nota o administrador.
+ *     description: Permite modificar una nota existente, incluyendo cambiar o asignar una categoría. Requiere ser el creador de la nota o administrador.
  *     tags: [Notes]
  *     security:
  *       - bearerAuth: []
@@ -193,13 +269,29 @@ router.get("/:id", authMiddleware, noteController.getNoteById);
  *                 type: string
  *                 format: binary
  *                 description: Nueva imagen para reemplazar la actual
+ *               isPrivate:
+ *                 type: boolean
+ *                 description: Cambiar visibilidad de la nota
+ *               password:
+ *                 type: string
+ *                 description: Nueva contraseña para nota privada
+ *               categoryId:
+ *                 type: string
+ *                 description: ID de la nueva categoría (enviar cadena vacía o null para quitar categoría)
+ *                 example: 6638a1b2c3d4e5f6a7b8c9d0
  *     responses:
  *       200:
  *         description: Nota actualizada exitosamente
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Note'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Note'
  *       401:
  *         description: No autorizado
  *       403:

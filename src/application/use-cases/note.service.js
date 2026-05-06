@@ -17,6 +17,10 @@ export default class NoteService {
         return await this.noteRepository.findByUserId(userId);
     }
 
+    async getNotesByCategoryId(categoryId) {
+        return await this.noteRepository.findByCategoryId(categoryId);
+    }
+
     async getAllNotes() {
         return await this.noteRepository.findAll();
     }
